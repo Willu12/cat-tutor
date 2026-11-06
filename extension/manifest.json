@@ -1,0 +1,12 @@
+{
+  "manifest_version" : 3,
+  "name": "Cat Tutor",
+  "version" : "0.1.0",
+  "description" : "The cat will teach you!",
+  "content_scripts" : [
+    {
+      "matches": ["https://leetcode.com/problems/*"],
+      "js": ["content.js"]
+    }
+  ]
+}

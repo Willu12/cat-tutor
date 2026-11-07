@@ -1,0 +1,19 @@
+/* Overlay with the cat: a square pinned to the bottom-right corner of the window. */
+#cat-tutor-root {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 2147483647; /* on top of everything LeetCode has */
+
+  width: 64px;
+  height: 64px;
+  border-radius: 8px;
+  background: #c9661a;
+
+  /* text centred in the square (temporary, until the canvas with the cat arrives) */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff;
+  font: 700 14px system-ui, sans-serif;
+}

@@ -16,7 +16,10 @@ fn greet(name: &str) -> String {
 }
 
 fn hello_from_rust() {
-    let word = JsValue::from_str(&greet("Borys"));
-    log_1(&word);
-    panic!("maslo");
+    log(&greet("Borys"));
+}
+
+fn log(msg: &str) {
+    let formatted_msg = JsValue::from_str(&format!("[cat_tutor] {msg}"));
+    log_1(&formatted_msg);
 }

@@ -13,18 +13,8 @@ fn on_init() {
 }
 
 #[wasm_bindgen]
-pub fn run(sprite_dir_path: &str) -> Result<(), JsValue> {
-    hello_from_rust(sprite_dir_path);
-    create_overlay(sprite_dir_path)
-}
-
-fn greet(name: &str) -> String {
-    format!("Miau, {name}!")
-}
-
-fn hello_from_rust(sprite_dir_path: &str) {
-    log(&greet("Borys"));
-    log(&format!("{}idle.png", sprite_dir_path));
+pub async fn run(sprite_dir_path: &str) -> Result<(), JsValue> {
+    create_overlay(sprite_dir_path).await
 }
 
 fn log(msg: &str) {
@@ -32,7 +22,7 @@ fn log(msg: &str) {
     log_1(&formatted_msg);
 }
 
-fn create_overlay(sprite_dir_path: &str) -> Result<(), JsValue> {
+async fn create_overlay(sprite_dir_path: &str) -> Result<(), JsValue> {
     let window = web_sys::window().ok_or("Failed to get window.")?;
     let document = window.document().ok_or("Failed to get document")?;
     let body = document.body().ok_or("Failed to get body from document.")?;
@@ -43,11 +33,14 @@ fn create_overlay(sprite_dir_path: &str) -> Result<(), JsValue> {
     }
 
     let div_element = create_div(&document)?;
-    let (canvas, ctx) = create_canvas(&document)?;
-    create_image(&ctx, sprite_dir_path)?;
+    let (canvas, rendering_ctx) = create_canvas(&document)?;
 
     div_element.append_child(&canvas)?;
     body.append_child(&div_element)?;
+
+    // Draw cat image
+    let image = load_image(&format!("{sprite_dir_path}idle.png")).await?;
+    rendering_ctx.draw_image_with_html_image_element(&image, 0., 0.)?;
 
     Ok(())
 }
@@ -58,29 +51,14 @@ fn create_div(document: &Document) -> Result<Element, JsValue> {
     Ok(div_element)
 }
 
-fn create_image(
-    rendering_ctx: &CanvasRenderingContext2d,
-    sprite_dir_path: &str,
-) -> Result<(), JsValue> {
+async fn load_image(url: &str) -> Result<HtmlImageElement, JsValue> {
     let image = HtmlImageElement::new()?;
-
-    let rendering_ctx_clone = rendering_ctx.clone();
-    let image_clone = image.clone();
-
-    let on_load = Closure::<dyn FnMut()>::new(move || {
-        log("idle.png loaded");
-        if let Err(e) = rendering_ctx_clone.draw_image_with_html_image_element(&image_clone, 0., 0.)
-        {
-            log(&format!("Failed to draw image: {e:?}"));
-        }
-    });
-
-    image.set_onload(Some(on_load.as_ref().unchecked_ref()));
-    on_load.forget();
-
-    image.set_src(&format!("{}idle.png", sprite_dir_path));
-
-    Ok(())
+    image.set_src(url);
+    image
+        .decode()
+        .await
+        .map_err(|_| format!("failed to decode {url}"))?;
+    Ok(image)
 }
 
 fn create_canvas(
@@ -89,7 +67,7 @@ fn create_canvas(
     let canvas_element = document.create_element("canvas")?;
     let canvas = canvas_element
         .dyn_into::<HtmlCanvasElement>()
-        .map_err(|_| "creted element is not a canvas")?;
+        .map_err(|_| "created element is not a canvas")?;
 
     canvas.set_width(SPRITE_SIZE);
     canvas.set_height(SPRITE_SIZE);

@@ -1,7 +1,10 @@
+use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use web_sys::console::log_1;
+use web_sys::{CanvasRenderingContext2d, Document, Element, HtmlCanvasElement};
 
 const CAT_ELEMENT_ID: &str = "cat-tutor-root";
+const SPRITE_SIZE: u32 = 32;
 
 #[wasm_bindgen(start)]
 fn on_init() {
@@ -9,8 +12,8 @@ fn on_init() {
 }
 
 #[wasm_bindgen]
-pub fn run() -> Result<(), JsValue> {
-    hello_from_rust();
+pub fn run(sprite_dir_path: &str) -> Result<(), JsValue> {
+    hello_from_rust(sprite_dir_path);
     create_overlay()
 }
 
@@ -18,8 +21,9 @@ fn greet(name: &str) -> String {
     format!("Miau, {name}!")
 }
 
-fn hello_from_rust() {
+fn hello_from_rust(sprite_dir_path: &str) {
     log(&greet("Borys"));
+    log(&format!("{}idle.png", sprite_dir_path));
 }
 
 fn log(msg: &str) {
@@ -37,13 +41,36 @@ fn create_overlay() -> Result<(), JsValue> {
         return Ok(());
     }
 
-    let element = document.create_element("div")?;
-    element.set_id(CAT_ELEMENT_ID);
-    element.set_text_content(Some("MIAU"));
-    body.append_child(&element)?;
-
-    let body_children_count = body.child_element_count();
-    log(&format!("body children: {body_children_count}"));
+    let div_element = create_div(&document)?;
+    let canvas = create_canvas(&document)?;
+    div_element.append_child(&canvas)?;
+    body.append_child(&div_element)?;
 
     Ok(())
+}
+
+fn create_div(document: &Document) -> Result<Element, JsValue> {
+    let div_element = document.create_element("div")?;
+    div_element.set_id(CAT_ELEMENT_ID);
+    Ok(div_element)
+}
+
+fn create_canvas(document: &Document) -> Result<HtmlCanvasElement, JsValue> {
+    let canvas_element = document.create_element("canvas")?;
+    let canvas = canvas_element
+        .dyn_into::<HtmlCanvasElement>()
+        .map_err(|_| "creted element is not a canvas")?;
+
+    canvas.set_width(SPRITE_SIZE);
+    canvas.set_height(SPRITE_SIZE);
+    let ctx = canvas
+        .get_context("2d")?
+        .ok_or("Failed to get context.")?
+        .dyn_into::<CanvasRenderingContext2d>()
+        .map_err(|_| "Canvas context is not 2d")?;
+
+    ctx.set_fill_style_str("blue");
+    ctx.fill_rect(0., 0., f64::from(SPRITE_SIZE), f64::from(SPRITE_SIZE));
+
+    Ok(canvas)
 }

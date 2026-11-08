@@ -4,6 +4,6 @@
   
   const {default: init, run} = mod; 
   await init();
-  run();
+  run(chrome.runtime.getURL("sprites/"));
 })();
 

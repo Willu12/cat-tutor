@@ -12,7 +12,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["pkg/cat_tutor.js", "pkg/cat_tutor_bg.wasm"],
+      "resources": ["pkg/cat_tutor.js", "pkg/cat_tutor_bg.wasm", "sprites/*.png"],
       "matches": ["https://leetcode.com/*"]
     }
   ]

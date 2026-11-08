@@ -1,5 +1,6 @@
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
+use web_sys::HtmlImageElement;
 use web_sys::console::log_1;
 use web_sys::{CanvasRenderingContext2d, Document, Element, HtmlCanvasElement};
 
@@ -14,7 +15,7 @@ fn on_init() {
 #[wasm_bindgen]
 pub fn run(sprite_dir_path: &str) -> Result<(), JsValue> {
     hello_from_rust(sprite_dir_path);
-    create_overlay()
+    create_overlay(sprite_dir_path)
 }
 
 fn greet(name: &str) -> String {
@@ -31,7 +32,7 @@ fn log(msg: &str) {
     log_1(&formatted_msg);
 }
 
-fn create_overlay() -> Result<(), JsValue> {
+fn create_overlay(sprite_dir_path: &str) -> Result<(), JsValue> {
     let window = web_sys::window().ok_or("Failed to get window.")?;
     let document = window.document().ok_or("Failed to get document")?;
     let body = document.body().ok_or("Failed to get body from document.")?;
@@ -42,7 +43,9 @@ fn create_overlay() -> Result<(), JsValue> {
     }
 
     let div_element = create_div(&document)?;
-    let canvas = create_canvas(&document)?;
+    let (canvas, ctx) = create_canvas(&document)?;
+    create_image(&ctx, sprite_dir_path)?;
+
     div_element.append_child(&canvas)?;
     body.append_child(&div_element)?;
 
@@ -55,7 +58,34 @@ fn create_div(document: &Document) -> Result<Element, JsValue> {
     Ok(div_element)
 }
 
-fn create_canvas(document: &Document) -> Result<HtmlCanvasElement, JsValue> {
+fn create_image(
+    rendering_ctx: &CanvasRenderingContext2d,
+    sprite_dir_path: &str,
+) -> Result<(), JsValue> {
+    let image = HtmlImageElement::new()?;
+
+    let rendering_ctx_clone = rendering_ctx.clone();
+    let image_clone = image.clone();
+
+    let on_load = Closure::<dyn FnMut()>::new(move || {
+        log("idle.png loaded");
+        if let Err(e) = rendering_ctx_clone.draw_image_with_html_image_element(&image_clone, 0., 0.)
+        {
+            log(&format!("Failed to draw image: {e:?}"));
+        }
+    });
+
+    image.set_onload(Some(on_load.as_ref().unchecked_ref()));
+    on_load.forget();
+
+    image.set_src(&format!("{}idle.png", sprite_dir_path));
+
+    Ok(())
+}
+
+fn create_canvas(
+    document: &Document,
+) -> Result<(HtmlCanvasElement, CanvasRenderingContext2d), JsValue> {
     let canvas_element = document.create_element("canvas")?;
     let canvas = canvas_element
         .dyn_into::<HtmlCanvasElement>()
@@ -69,8 +99,5 @@ fn create_canvas(document: &Document) -> Result<HtmlCanvasElement, JsValue> {
         .dyn_into::<CanvasRenderingContext2d>()
         .map_err(|_| "Canvas context is not 2d")?;
 
-    ctx.set_fill_style_str("blue");
-    ctx.fill_rect(0., 0., f64::from(SPRITE_SIZE), f64::from(SPRITE_SIZE));
-
-    Ok(canvas)
+    Ok((canvas, ctx))
 }

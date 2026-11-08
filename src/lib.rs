@@ -1,6 +1,8 @@
 use wasm_bindgen::prelude::*;
 use web_sys::console::log_1;
 
+const CAT_ELEMENT_ID: &str = "cat-tutor-root";
+
 #[wasm_bindgen(start)]
 fn on_init() {
     console_error_panic_hook::set_once();
@@ -9,7 +11,7 @@ fn on_init() {
 #[wasm_bindgen]
 pub fn run() -> Result<(), JsValue> {
     hello_from_rust();
-    create_square()
+    create_overlay()
 }
 
 fn greet(name: &str) -> String {
@@ -25,14 +27,13 @@ fn log(msg: &str) {
     log_1(&formatted_msg);
 }
 
-const CAT_ELEMENT_ID: &str = "cat-tutor-root";
-
-fn create_square() -> Result<(), JsValue> {
+fn create_overlay() -> Result<(), JsValue> {
     let window = web_sys::window().ok_or("Failed to get window.")?;
     let document = window.document().ok_or("Failed to get document")?;
     let body = document.body().ok_or("Failed to get body from document.")?;
 
     if document.get_element_by_id(CAT_ELEMENT_ID).is_some() {
+        log("overlay already exists,skipping");
         return Ok(());
     }
 

@@ -1,8 +1,15 @@
 use crate::sprites::Frame;
 
 pub struct State {
-    last_submited_ms: f64,
+    idle_since_ms: f64,
     waiting_for_result: bool,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Event {
+    Run,
+    Submit,
+    Result,
 }
 
 const LYING_AFTER_MS: f64 = 60_000.;
@@ -11,12 +18,13 @@ const SLEEPING_AFTER_MS: f64 = 180_000.;
 impl State {
     pub fn new(now_ms: f64) -> State {
         State {
-            last_submited_ms: now_ms,
+            idle_since_ms: now_ms,
             waiting_for_result: false,
         }
     }
-    pub fn get_frame(&self, now_ms: f64) -> Frame {
-        let time_diff_ms = now_ms - self.last_submited_ms;
+
+    pub fn frame(&self, now_ms: f64) -> Frame {
+        let time_diff_ms = now_ms - self.idle_since_ms;
 
         match (self.waiting_for_result, time_diff_ms) {
             (true, _) => Frame::Shouting,
@@ -24,6 +32,18 @@ impl State {
             (false, LYING_AFTER_MS..SLEEPING_AFTER_MS) => Frame::Lying,
             (false, _) => Frame::Sleeping,
         }
+    }
+
+    pub fn handle(&mut self, event: Event, now_ms: f64) {
+        match event {
+            Event::Submit | Event::Run => {
+                self.waiting_for_result = true;
+            }
+            Event::Result => {
+                self.waiting_for_result = false;
+                self.idle_since_ms = now_ms;
+            }
+        };
     }
 }
 
@@ -37,55 +57,61 @@ mod tests {
     #[test]
     fn idle_right_after_start() {
         let state = State::new(START_MS);
-        assert_eq!(state.get_frame(START_MS), Frame::Idle);
+        assert_eq!(state.frame(START_MS), Frame::Idle);
     }
 
     #[test]
     fn idle_just_before_lying_threshold() {
         let state = State::new(START_MS);
-        assert_eq!(state.get_frame(START_MS + LYING_AFTER_MS - 1.0), Frame::Idle);
+        assert_eq!(state.frame(START_MS + LYING_AFTER_MS - 1.0), Frame::Idle);
     }
 
     #[test]
     fn lying_exactly_at_threshold() {
         let state = State::new(START_MS);
-        assert_eq!(state.get_frame(START_MS + LYING_AFTER_MS), Frame::Lying);
+        assert_eq!(state.frame(START_MS + LYING_AFTER_MS), Frame::Lying);
     }
 
     #[test]
     fn lying_just_before_sleeping_threshold() {
         let state = State::new(START_MS);
-        assert_eq!(state.get_frame(START_MS + SLEEPING_AFTER_MS - 1.0), Frame::Lying);
+        assert_eq!(
+            state.frame(START_MS + SLEEPING_AFTER_MS - 1.0),
+            Frame::Lying
+        );
     }
 
     #[test]
     fn sleeping_exactly_at_threshold() {
         let state = State::new(START_MS);
-        assert_eq!(state.get_frame(START_MS + SLEEPING_AFTER_MS), Frame::Sleeping);
+        assert_eq!(state.frame(START_MS + SLEEPING_AFTER_MS), Frame::Sleeping);
     }
 
     #[test]
     fn sleeping_long_after() {
         let state = State::new(START_MS);
-        assert_eq!(state.get_frame(START_MS + 60.0 * 60_000.0), Frame::Sleeping);
+        assert_eq!(state.frame(START_MS + 60.0 * 60_000.0), Frame::Sleeping);
     }
 
     #[test]
     fn shouting_while_waiting_for_result() {
         let state = State {
-            last_submited_ms: START_MS,
+            idle_since_ms: START_MS,
             waiting_for_result: true,
         };
-        assert_eq!(state.get_frame(START_MS), Frame::Shouting);
+        assert_eq!(state.frame(START_MS), Frame::Shouting);
     }
 
     #[test]
     fn shouting_beats_elapsed_time() {
         // Waiting for the verdict wins even if the cat would otherwise sleep.
         let state = State {
-            last_submited_ms: START_MS,
+            idle_since_ms: START_MS,
             waiting_for_result: true,
         };
-        assert_eq!(state.get_frame(START_MS + SLEEPING_AFTER_MS * 10.0), Frame::Shouting);
+        assert_eq!(
+            state.frame(START_MS + SLEEPING_AFTER_MS * 10.0),
+            Frame::Shouting
+        );
     }
 }

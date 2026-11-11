@@ -1,7 +1,7 @@
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use web_sys::console::log_1;
-use web_sys::{CanvasRenderingContext2d, Document, Element, HtmlCanvasElement};
+use web_sys::{CanvasRenderingContext2d, Document, Element, HtmlCanvasElement, Performance};
 
 mod sprites;
 use gloo_timers::future::TimeoutFuture;
@@ -48,7 +48,7 @@ async fn create_overlay(sprite_dir_path: &str) -> Result<(), JsValue> {
     let performance = window.performance().ok_or("no perfomance")?;
     let state = State::new(performance.now());
     loop {
-        let frame = state.get_frame(performance.now());
+        let frame = state.frame(performance.now());
         let image = sprites.get(frame);
         rendering_ctx.clear_rect(0., 0., f64::from(SPRITE_SIZE), f64::from(SPRITE_SIZE));
         rendering_ctx.draw_image_with_html_image_element(image, 0., 0.)?;

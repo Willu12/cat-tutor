@@ -1,8 +1,14 @@
 use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
-use web_sys::HtmlImageElement;
 use web_sys::console::log_1;
 use web_sys::{CanvasRenderingContext2d, Document, Element, HtmlCanvasElement};
+
+mod sprites;
+use gloo_timers::future::TimeoutFuture;
+use sprites::Sprites;
+
+mod state;
+use state::State;
 
 const CAT_ELEMENT_ID: &str = "cat-tutor-root";
 const SPRITE_SIZE: u32 = 32;
@@ -38,27 +44,23 @@ async fn create_overlay(sprite_dir_path: &str) -> Result<(), JsValue> {
     div_element.append_child(&canvas)?;
     body.append_child(&div_element)?;
 
-    // Draw cat image
-    let image = load_image(&format!("{sprite_dir_path}idle.png")).await?;
-    rendering_ctx.draw_image_with_html_image_element(&image, 0., 0.)?;
+    let sprites = Sprites::new(sprite_dir_path).await?;
+    let performance = window.performance().ok_or("no perfomance")?;
+    let state = State::new(performance.now());
+    loop {
+        let frame = state.get_frame(performance.now());
+        let image = sprites.get(frame);
+        rendering_ctx.clear_rect(0., 0., f64::from(SPRITE_SIZE), f64::from(SPRITE_SIZE));
+        rendering_ctx.draw_image_with_html_image_element(image, 0., 0.)?;
 
-    Ok(())
+        TimeoutFuture::new(1_000).await;
+    }
 }
 
 fn create_div(document: &Document) -> Result<Element, JsValue> {
     let div_element = document.create_element("div")?;
     div_element.set_id(CAT_ELEMENT_ID);
     Ok(div_element)
-}
-
-async fn load_image(url: &str) -> Result<HtmlImageElement, JsValue> {
-    let image = HtmlImageElement::new()?;
-    image.set_src(url);
-    image
-        .decode()
-        .await
-        .map_err(|_| format!("failed to decode {url}"))?;
-    Ok(image)
 }
 
 fn create_canvas(
